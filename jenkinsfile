@@ -1,17 +1,44 @@
 pipeline {
-    agent any
+    agent {
+        docker {
+            image 'python:3.10'
+        }
+    }
+
+    environment {
+        VENV = 'venv'
+    }
 
     stages {
-        stage('Setup') {
+        stage('Setup Environment & Install Dependencies') {
             steps {
-                sh 'python3 --version'
-                sh 'pip3 install -r requirements.txt'
+                sh '''
+                    python -m venv $VENV
+                    . $VENV/bin/activate
+                    pip install --upgrade pip
+                    pip install -r requirements.txt
+                '''
             }
         }
 
         stage('Run Tests') {
             steps {
-                sh 'pytest'
+                sh '''
+                    . $VENV/bin/activate
+                    pytest test_app.py
+                '''
+            }
+        }
+
+        stage('Deploy') {
+            when {
+                anyOf {
+                    branch 'main'
+                    branch pattern: "release/.*", comparator: "REGEXP"
+                }
+            }
+            steps {
+                echo "Simulating deploy from branch ${env.BRANCH_NAME}"
             }
         }
     }
